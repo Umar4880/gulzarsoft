@@ -107,7 +107,3 @@ class Graphs:
         if summary:
             return {"summaries": {topic: summary}}
         return {}
-    
-
-
-
