@@ -1,8 +1,8 @@
-## Setup project ot run
+## Setup project to run
 
-- create **virtual envoirenment by running command `python -m vevn .venv` at project root or wroking directory.
+- create **virtual environment by running command `python -m venv .venv` at project root or working directory.
 
-- Install requirements.txt by running command `pip isnatll requirements.txt`
+- Install requirements.txt by running command `python -m pip install -r requirements.txt`
 
 - create **.env** file at root directory and setup following variables:
     1. NEWS_API_KEY = ___________

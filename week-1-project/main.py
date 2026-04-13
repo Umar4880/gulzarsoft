@@ -84,10 +84,6 @@ if __name__ == "__main__":
     for i in range(0, no_of_topics):
         topic = input(f"Enter topic no {i+1}:")
         topics.append(topic)
-
-    
-
-    
     
     asyncio.run(main(topic=topics, city=citeis))
 
