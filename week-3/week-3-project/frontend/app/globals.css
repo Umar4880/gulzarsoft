@@ -22,7 +22,7 @@ html,
 body {
   margin: 0;
   padding: 0;
-  min-height: 100%;
+  height: 100%;
 }
 
 body {
@@ -33,9 +33,7 @@ body {
 
 .console-root {
   position: relative;
-  min-height: 100vh;
-  overflow: hidden;
-  padding: 32px;
+  height: 100dvh;
 }
 
 .bg-orb {
@@ -66,27 +64,29 @@ body {
 .console-shell {
   position: relative;
   z-index: 2;
-  max-width: 1220px;
+  width: 100%;
   margin: 0 auto;
+  height: 100%;
+  min-height: 0;
   display: grid;
   grid-template-columns: 320px 1fr;
-  gap: 20px;
 }
 
 .info-panel,
 .chat-panel {
   border: 1px solid var(--border);
-  border-radius: 20px;
   background: var(--panel);
   backdrop-filter: blur(8px);
   box-shadow: var(--shadow);
 }
 
 .info-panel {
-  padding: 28px 22px;
+  padding: 10px 18px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .eyebrow {
@@ -113,9 +113,11 @@ body {
 }
 
 .metric-stack {
-  display: grid;
-  gap: 10px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
   margin-top: 6px;
+
 }
 
 .metric-card {
@@ -123,6 +125,9 @@ body {
   border-radius: 14px;
   padding: 12px;
   background: var(--panel-solid);
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
 }
 
 .metric-label {
@@ -139,6 +144,9 @@ body {
   font-weight: 700;
   font-size: 20px;
   color: var(--accent-strong);
+  white-space: nowrap;         /* 2. Prevent text from wrapping */
+  overflow: hidden;            /* 3. Hide the excess text */
+  text-overflow: ellipsis;     /* 4. Add the '...' */
 }
 
 .metric-value.good {
@@ -158,6 +166,11 @@ body {
   color: var(--text-subtle);
   background: rgba(255, 255, 255, 0.7);
   border-radius: 0 12px 12px 0;
+  overflow-wrap: anywhere;
+}
+
+.status-inline {
+  margin: 0 0 6px;
 }
 
 .mono {
@@ -186,7 +199,8 @@ body {
   padding: 18px;
   display: flex;
   flex-direction: column;
-  min-height: 84vh;
+  min-height: 0;
+  height: 100%;
 }
 
 .chat-header {
@@ -226,11 +240,10 @@ body {
 
 .chat-log {
   margin-top: 12px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
   padding: 14px;
   background: rgba(255, 255, 255, 0.92);
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 
@@ -265,8 +278,57 @@ body {
 .message-text {
   margin: 0;
   line-height: 1.6;
-  white-space: pre-wrap;
   word-break: break-word;
+}
+
+.markdown-body > *:first-child {
+  margin-top: 0;
+}
+
+.markdown-body > *:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body p,
+.markdown-body ul,
+.markdown-body ol,
+.markdown-body pre,
+.markdown-body blockquote {
+  margin: 0 0 10px;
+}
+
+.markdown-body pre {
+  overflow-x: auto;
+  padding: 10px;
+  border-radius: 10px;
+  background: #f1f5f5;
+  border: 1px solid var(--border);
+}
+
+.markdown-body code {
+  font-family: "Courier New", monospace;
+  font-size: 0.92em;
+}
+
+.markdown-body table {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.markdown-body th,
+.markdown-body td {
+  border: 1px solid var(--border);
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.markdown-body blockquote {
+  margin-left: 0;
+  padding-left: 10px;
+  border-left: 3px solid rgba(10, 77, 82, 0.35);
+  color: var(--text-subtle);
 }
 
 .message-time {
@@ -423,14 +485,18 @@ body {
 @media (max-width: 980px) {
   .console-root {
     padding: 16px;
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
   }
 
   .console-shell {
     grid-template-columns: 1fr;
+    height: auto;
   }
 
   .info-panel {
-    order: 2;
+    min-height: 68vh;
   }
 
   .chat-panel {

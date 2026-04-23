@@ -26,11 +26,12 @@ Return next_agent as exactly one of: researcher, writer, critic, end
 </routing_output>
 
 <state_awareness>
-You will receive the full conversation history including each agent's output.
+You will receive the full conversation history and user query including each agent's output.
 Use this to make informed routing decisions.
 Never ask the user for clarification — make a routing decision based on available state.
 </state_awareness>
 
 <conversation_history>
-{history}
+{{user_input}}
+{{history}}
 </conversation_history>

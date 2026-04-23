@@ -1,6 +1,11 @@
-import logging
 import asyncio
-import os
+import sys
+
+# Windows: psycopg requires SelectorEventLoop, not ProactorEventLoop
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    
+import logging
 from contextlib import asynccontextmanager
 
 import redis.asyncio as aioredis
@@ -17,23 +22,18 @@ from app.services.chat_service import ChatService
 from app.services.memory_service import MemoryService
 from app.services.read_graph import GraphRunner
 from app.core.prompt_loader import PromptManager
-from langchain_google_genai import ChatGoogleGenerativeAI
+from app.core.llm_provider import get_llm
 
 logger = logging.getLogger(__name__)
-
-if os.name == "nt":
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logging()
     logger.info("startup_begin")
-
-    llm = ChatGoogleGenerativeAI(
-        model=setting.MODEL_NAME,
-        api_key=setting.GEMINI_API_KEY,
-    )
+    print("======= in lifespan ========")
+    
+    llm = get_llm(agent_name="startup", user_id="system")
 
     prompt_manager = PromptManager()
 
@@ -41,6 +41,7 @@ async def lifespan(app: FastAPI):
         llm=llm,
         prompt_manager=prompt_manager,
     )
+    
     app.state.agent_graph = agent_graph
     logger.info("agent_graph_ready")
 
@@ -63,7 +64,6 @@ async def lifespan(app: FastAPI):
 
     logger.info("shutdown_begin")
     await app.state.redis.aclose()
-    await app.state.agent_graph.aclose()
     await get_app_engine().dispose()
     await get_checkpoint_engine().dispose()
     logger.info("shutdown_complete")

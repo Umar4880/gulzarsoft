@@ -1,24 +1,20 @@
-from app.core.config import setting
-from app.core.callbacks.limiter_handler import RateLimitCallbackHandler
+from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_ollama import ChatOllama
+
 from app.core.callbacks.logging_handler import LoggingCallbackHandler
+from app.core.config import setting
 
-from langchain_google_genai import ChatGoogleGenerativeAI
 
-def get_llm(agent_name: str, user_id: str):
-
-    rate_limiter = RateLimitCallbackHandler(
-        user_id = user_id,
-        model_name = setting.MODEL_NAME
-    )
+def get_llm(agent_name: str = "app", user_id: str = "system") -> BaseChatModel:
     logger = LoggingCallbackHandler(
-        agent_name =  agent_name,
-        user_id = user_id
+        agent_name=agent_name,
+        user_id=user_id,
     )
 
-    return ChatGoogleGenerativeAI(
-        api_key = setting.GEMINI_API_KEY,
-        model = setting.MODEL_NAME,
-        temperature = 1,
-        streaming = True,
-        callbacks=[rate_limiter, logger]        
+    return ChatOllama(
+        base_url=setting.OLLAMA_BASE_URL,
+        model=setting.OLLAMA_MODEL,
+        temperature=setting.TEMPERATURE,
+        streaming=True,
+        callbacks=[logger],
     )

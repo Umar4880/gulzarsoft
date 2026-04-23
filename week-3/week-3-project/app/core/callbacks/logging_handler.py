@@ -1,11 +1,9 @@
 import logging
-from typing import Dict, Any
+from typing import Dict
 import uuid
 import time
 
 from langchain_core.callbacks import AsyncCallbackHandler
-from langchain_core.messages import BaseMessage
-from langchain_core.outputs import LLMResult
 
 logger = logging.getLogger(__name__)
 
@@ -37,14 +35,15 @@ class LoggingCallbackHandler(AsyncCallbackHandler):
             tags = None, 
             **kwargs):
         
-        duration_ms = time.time() - self._start_time.pop(run_id, 0) * 1000
+        start_time = self._start_time.pop(run_id, time.time())
+        duration_ms = (time.time() - start_time) * 1000
 
         token_usage = {}
-        if response.llm_output():
+        if response.llm_output:
             token_usage = response.llm_output.get("token_usage", {})
 
-        logger.log(
-            "LLM call compelete", 
+        logger.info(
+            "LLM call completed",
             extra={
                 "event": "llm_call",
                 "agent": self._name,
@@ -67,10 +66,11 @@ class LoggingCallbackHandler(AsyncCallbackHandler):
             tags = None, 
             **kwargs):
         
-        duration_ms = time.time() - self._start_time.pop(run_id, 0) * 1000
+        start_time = self._start_time.pop(run_id, time.time())
+        duration_ms = (time.time() - start_time) * 1000
 
         logger.error(
-            "LLM call compelete", 
+            "LLM call failed",
             extra={
                 "event": "llm_call",
                 "agent": self._name,

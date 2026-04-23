@@ -2,13 +2,13 @@ from app.agents.graph.state import AgentState
 from app.core.prompt_loader import PromptManager
 from app.tools.web_search_tool import web_search_tool
 
+from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.runnables import Runnable
 from langchain.agents import create_agent
 
 class ResearchAgent:
-    def __init__(self, llm: ChatGoogleGenerativeAI, prompt_manager: PromptManager):
+    def __init__(self, llm: BaseChatModel, prompt_manager: PromptManager):
         self.prompt_mng = prompt_manager
         self.llm = llm
         self._chain = self._build_chain()
@@ -16,13 +16,12 @@ class ResearchAgent:
     def _build_chain(self) -> Runnable:
         system_prompt = self.prompt_mng.load_agent_system_prompt("researcher", include_history=False)
 
-        retry_llm = self.llm.with_retry(
-            stop_after_attempt=3,
-        )
-
         agent = create_agent(
-            retry_llm,
+            self.llm,
             tools=[web_search_tool],
+        )
+        agent = agent.with_retry(
+            stop_after_attempt=3,
         )
         return system_prompt | agent
 

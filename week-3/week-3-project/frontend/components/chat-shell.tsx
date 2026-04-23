@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 import { postChatMessage } from "../lib/api";
 
@@ -17,15 +19,22 @@ type ChatMeta = {
   approved: boolean;
   routeReason: string;
   iterationCount: number;
+  lastAgent: string;
+  nextAgent: string;
+  backendStage: string;
 };
 
-const INITIAL_MESSAGE: UiMessage = {
-  id: "welcome",
-  role: "assistant",
-  content:
-    "Welcome to GulzarSoft Research Console. Ask a question and I will route it through your multi-agent pipeline.",
-  timestamp: currentTime(),
-};
+const WELCOME_MESSAGE =
+  "Welcome to GulzarSoft Research Console. Ask a question and I will route it through your multi-agent pipeline.";
+
+function makeWelcomeMessage(timestamp = ""): UiMessage {
+  return {
+    id: "welcome",
+    role: "assistant",
+    content: WELCOME_MESSAGE,
+    timestamp,
+  };
+}
 
 function currentTime(): string {
   return new Date().toLocaleTimeString([], {
@@ -47,10 +56,36 @@ function makeBrowserUserId(): string {
   return id;
 }
 
+function readString(record: Record<string, unknown>, key: string): string {
+  const value = record[key];
+  return typeof value === "string" ? value : "";
+}
+
+function readBoolean(record: Record<string, unknown>, key: string): boolean | null {
+  const value = record[key];
+  return typeof value === "boolean" ? value : null;
+}
+
+function cleanRouteReason(rawReason: string): string {
+  const withoutPrefix = rawReason
+    .replace(/^Supervisor routed to\s+__?\w+__?\s*:?\s*/i, "")
+    .replace(/^Supervisor routed to\s+\w+\s*:?\s*/i, "")
+    .replace(/\*\*/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!withoutPrefix) {
+    return "Route reason was not provided.";
+  }
+
+  const firstSentence = withoutPrefix.split(/(?<=[.!?])\s+/)[0]?.trim() ?? withoutPrefix;
+  return firstSentence.slice(0, 220);
+}
+
 export function ChatShell() {
   const [userId, setUserId] = useState<string>("");
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<UiMessage[]>([INITIAL_MESSAGE]);
+  const [messages, setMessages] = useState<UiMessage[]>([makeWelcomeMessage()]);
   const [draft, setDraft] = useState<string>("");
   const [isSending, setIsSending] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
@@ -58,12 +93,26 @@ export function ChatShell() {
     approved: false,
     routeReason: "No route decision yet.",
     iterationCount: 0,
+    lastAgent: "idle",
+    nextAgent: "supervisor",
+    backendStage: "waiting for input",
   });
 
   const scrollAnchorRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setUserId(makeBrowserUserId());
+  }, []);
+
+  useEffect(() => {
+    // Keep server and client HTML identical at first paint, then fill timestamp on mount.
+    setMessages((prev) => {
+      if (prev.length !== 1 || prev[0].id !== "welcome" || prev[0].timestamp) {
+        return prev;
+      }
+
+      return [makeWelcomeMessage(currentTime())];
+    });
   }, []);
 
   useEffect(() => {
@@ -93,6 +142,11 @@ export function ChatShell() {
     setDraft("");
     setError("");
     setIsSending(true);
+    setMeta((prev) => ({
+      ...prev,
+      backendStage: "supervisor deciding route",
+      nextAgent: "supervisor",
+    }));
 
     try {
       const response = await postChatMessage({
@@ -101,11 +155,22 @@ export function ChatShell() {
         conversation_id: conversationId,
       });
 
+      const rawState = response.raw_state ?? {};
+      const routeReason = cleanRouteReason(
+        readString(rawState, "route_reason") || response.route_reason || "",
+      );
+      const approved = readBoolean(rawState, "is_approved") ?? response.approved;
+      const lastAgent = readString(rawState, "last_agent") || "unknown";
+      const nextAgent = readString(rawState, "next_agent") || "end";
+
       setConversationId(response.conversation_id);
       setMeta({
-        approved: response.approved,
-        routeReason: response.route_reason || "Route reason was not provided.",
+        approved,
+        routeReason,
         iterationCount: response.iteration_count,
+        lastAgent,
+        nextAgent,
+        backendStage: approved ? "workflow approved" : "workflow completed",
       });
 
       const assistantMessage: UiMessage = {
@@ -123,6 +188,10 @@ export function ChatShell() {
           : "Failed to reach the API. Check if backend is running.";
 
       setError(message);
+      setMeta((prev) => ({
+        ...prev,
+        backendStage: "request failed",
+      }));
     } finally {
       setIsSending(false);
     }
@@ -130,19 +199,20 @@ export function ChatShell() {
 
   function resetConversation() {
     setConversationId(null);
-    setMessages([INITIAL_MESSAGE]);
+    setMessages([makeWelcomeMessage(currentTime())]);
     setMeta({
       approved: false,
       routeReason: "No route decision yet.",
       iterationCount: 0,
+      lastAgent: "idle",
+      nextAgent: "supervisor",
+      backendStage: "waiting for input",
     });
     setError("");
   }
 
   return (
     <main className="console-root">
-      <div className="bg-orb orb-a" aria-hidden="true" />
-      <div className="bg-orb orb-b" aria-hidden="true" />
 
       <div className="console-shell">
         <aside className="info-panel">
@@ -153,13 +223,6 @@ export function ChatShell() {
           </p>
 
           <div className="metric-stack">
-            <article className="metric-card rise">
-              <p className="metric-label">Thread</p>
-              <p className="metric-value mono">
-                {conversationId ? conversationId.slice(0, 8) : "new"}
-              </p>
-            </article>
-
             <article className="metric-card rise delay-1">
               <p className="metric-label">Iterations</p>
               <p className="metric-value">{meta.iterationCount}</p>
@@ -178,7 +241,16 @@ export function ChatShell() {
             <p>{meta.routeReason}</p>
           </article>
 
-          <button className="ghost-button rise delay-4" type="button" onClick={resetConversation}>
+          <article className="route-note rise delay-4">
+            <p className="metric-label">Backend stage</p>
+            <p className="status-inline">
+              <strong>{isSending ? "processing" : meta.backendStage}</strong>
+            </p>
+            <p className="status-inline">last: {meta.lastAgent}</p>
+            <p className="status-inline">next: {meta.nextAgent}</p>
+          </article>
+
+          <button className="ghost-button rise delay-5" type="button" onClick={resetConversation}>
             Start New Thread
           </button>
         </aside>
@@ -200,7 +272,9 @@ export function ChatShell() {
                 style={{ animationDelay: `${index * 55}ms` }}
               >
                 <div className="message-bubble">
-                  <p className="message-text">{message.content}</p>
+                  <div className="message-text markdown-body">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+                  </div>
                   <span className="message-time">{message.timestamp}</span>
                 </div>
               </article>

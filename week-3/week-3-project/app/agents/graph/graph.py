@@ -2,8 +2,8 @@ import logging
 import asyncio
 from typing import Any, AsyncIterator, Dict, Optional
 
+from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import HumanMessage
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.graph import END, StateGraph
 from langgraph.types import Command
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class AgentGraph:
-    def __init__(self, llm: ChatGoogleGenerativeAI, prompt_manager: PromptManager, checkpointer: AsyncPostgresSaver):
+    def __init__(self, llm: BaseChatModel, prompt_manager: PromptManager, checkpointer: AsyncPostgresSaver):
         self.llm = llm
         self.prompt_mng = prompt_manager
         self.checkpointer = checkpointer
@@ -33,7 +33,7 @@ class AgentGraph:
         self.graph = self._build_state_graph()
 
     @classmethod
-    async def create(cls, llm: ChatGoogleGenerativeAI, prompt_manager: PromptManager) -> "AgentGraph":
+    async def create(cls, llm: BaseChatModel, prompt_manager: PromptManager) -> "AgentGraph":
         checkpoint_pool = get_checkpoint_pool()
         await checkpoint_pool.open()
 
